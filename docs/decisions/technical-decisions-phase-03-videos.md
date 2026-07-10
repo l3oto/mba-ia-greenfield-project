@@ -44,6 +44,8 @@ _Subprojects in scope:_
 
 **Decision:** A (BullMQ + Redis)
 
+**Libraries:** `bullmq@^5.x`, `@nestjs/bullmq@^11.x`
+
 ---
 
 ## TD-02: 10GB Upload Strategy
@@ -74,6 +76,8 @@ _Subprojects in scope:_
 **Recommendation:** **Option A (S3 Multipart Upload with presigned part URLs)** — It is the S3-native contract for large objects: satisfies 10GB (Option B cannot), gives per-part retry and parallelism, and keeps the API as pure orchestrator (draft pre-registration on initiate, queue publish on complete). Option C adds a server component to obtain properties multipart already provides.
 
 **Decision:** A (S3 Multipart Upload with presigned part URLs)
+
+**Libraries:** `@aws-sdk/client-s3@^3.x`, `@aws-sdk/s3-request-presigner@^3.x`
 
 ---
 
@@ -168,6 +172,8 @@ _Subprojects in scope:_
 
 **Decision:** A (nanoid 11-char public ID in a unique column)
 
+**Libraries:** `nanoid@^3.3.x` (v4+ é ESM-only; build CommonJS)
+
 ---
 
 ## TD-06: Streaming & Download Delivery
@@ -198,6 +204,8 @@ _Subprojects in scope:_
 **Recommendation:** **Option A (presigned GET, storage serves bytes)** — Consistent with TD-02's "API orchestrates, storage moves bytes" contract and with the architecture diagram; MinIO's native Range support gives correct 206 streaming for free, and presign TTL provides the access-control hook Phase 04 will refine.
 
 **Decision:** A (presigned GET URLs for streaming and download)
+
+**Libraries:** `@aws-sdk/s3-request-presigner@^3.x`
 
 ---
 
