@@ -96,7 +96,12 @@ describe('Video entity (integration)', () => {
   });
 
   it('should round-trip jsonb metadata and bigint size', async () => {
-    const metadata = { width: 1920, height: 1080, codec: 'h264', format: 'mp4' };
+    const metadata = {
+      width: 1920,
+      height: 1080,
+      codec: 'h264',
+      format: 'mp4',
+    };
     const saved = await videoRepository.save(
       videoRepository.create({
         ...baseVideo(),
