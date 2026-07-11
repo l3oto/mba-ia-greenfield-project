@@ -22,6 +22,9 @@ services:
       context: .
       dockerfile: Dockerfile.dev
     command: npm run start:worker:dev
+    # On a fresh clone the worker starts before `npm install` populates the
+    # mounted volume and exits; restart keeps it retrying until deps exist.
+    restart: unless-stopped
     volumes:
       - .:/home/node/app
     depends_on:
