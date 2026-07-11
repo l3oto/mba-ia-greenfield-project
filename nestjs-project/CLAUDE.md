@@ -34,6 +34,10 @@ docker compose exec nestjs-api npm run start:dev
 Services:
 - `nestjs-api` — NestJS API, port `3000`
 - `db` — PostgreSQL 17, port `5432`, database `streamtube`, user/password `streamtube`
+- `mailpit` — SMTP sink for local email, SMTP `1025`, Web UI `8025`
+- `redis` — Redis 8, port `6379` — BullMQ backend for the `video-processing` queue
+- `minio` — S3-compatible object storage, S3 API `9000`, console `9001`, bucket `streamtube-videos` (created automatically on app bootstrap)
+- `video-worker` — video processing worker (no ports) — a second NestJS application context (`src/worker.ts`) consuming the `video-processing` queue with FFmpeg/ffprobe installed in the image
 
 All verification and teardown commands run on the **host machine**:
 
@@ -60,6 +64,8 @@ docker compose down
 
 ```bash
 npm run start:dev                        # Dev server with hot-reload
+npm run start:worker:dev                 # Video worker with hot-reload (runs in the video-worker service)
+npm run start:worker                     # Video worker (compiled entrypoint: dist/worker)
 npm run build                            # Compile to dist/
 npm run start:prod                       # Run compiled build
 
@@ -148,6 +154,29 @@ NestJS with standard module structure. Source lives in `src/`, compiled output i
 
 - Each domain feature gets its own module (e.g., `UsersModule`, `VideosModule`) registered in `AppModule`
 - Controllers handle HTTP routing; Services hold business logic; both are scoped to their module
+
+## Videos Module (Phase 03)
+
+Video ingestion and delivery live in `src/videos/` (module, service, controller, entity, processing) with shared infrastructure in `src/storage/` (S3/MinIO client, presigning) and `src/queue/` (BullMQ root connection).
+
+**Upload handshake (multipart, direct to storage — bytes never transit the API):**
+
+1. `POST /videos/upload` (auth) — pre-registers the video as a draft on the caller's channel, opens the S3 multipart upload, returns `{ video_id, public_id, upload_id, part_size (100MB), part_count }`
+2. `GET /videos/:id/upload/parts/:partNumber/url` (auth, owner) — presigned PUT URL per part; the client uploads the raw bytes and collects the `ETag` headers
+3. `POST /videos/:id/upload/complete` (auth, owner) — finalizes the object, flips status to `processing`, enqueues the job
+4. `DELETE /videos/:id/upload` (auth, owner) — aborts the multipart upload and discards the draft
+
+**Delivery (public — anonymous users watch freely):**
+
+- `GET /videos/:publicId` — watch-page metadata (presigned `thumbnail_url` included); non-`ready` videos answer 404
+- `GET /videos/:publicId/stream` — 302 redirect to a presigned storage URL; MinIO/S3 serves `Range` requests natively with 206
+- `GET /videos/:publicId/download` — 302 redirect with `attachment` content disposition and the original filename
+
+**Status lifecycle:** `draft → uploading → processing → ready | failed` (enum `video_status`; terminal failures persist `processing_error`).
+
+**Queue contract:** queue `video-processing`, job `process-video` with payload `{ videoId }`, `jobId = videoId` (dedup), attempts 3 with exponential backoff (5s base). Producer: `VideosService.completeUpload`. Consumer: `VideoProcessor` in the `video-worker` container (`src/worker.ts` entrypoint, `npm run start:worker:dev`), which downloads the original, extracts duration/metadata via ffprobe, captures a thumbnail frame via ffmpeg (`videos/{id}/thumbnail.jpg`), and marks the video `ready`. The consumer is idempotent — redelivered jobs for `ready` videos are no-ops.
+
+**Storage layout:** single private bucket `streamtube-videos`, keys `videos/{videoId}/original{ext}` and `videos/{videoId}/thumbnail.jpg`; all reads via presigned URLs (`STORAGE_PRESIGN_EXPIRES_SECONDS`). Presigned URLs are signed against `STORAGE_PUBLIC_ENDPOINT` — the host the consuming client can actually reach (inside Docker: `http://minio:9000`; browser on the host: `http://localhost:9000`).
 
 ## Code Conventions
 
