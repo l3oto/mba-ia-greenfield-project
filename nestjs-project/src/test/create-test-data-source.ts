@@ -6,7 +6,7 @@ interface TestDataSourceOptions {
 }
 
 export function createTestDataSource(
-  entities: (Function | string | EntitySchema<any>)[],
+  entities: ((new () => unknown) | string | EntitySchema<any>)[],
   options: TestDataSourceOptions = {},
 ): DataSource {
   const { synchronize = true, migrations } = options;
@@ -24,6 +24,16 @@ export function createTestDataSource(
 }
 
 export async function cleanAllTables(dataSource: DataSource): Promise<void> {
+  // videos references channels — it must be cleaned first. The to_regclass
+  // guard keeps suites that synchronize only a subset of entities working
+  // against databases where the videos table does not exist yet.
+  await dataSource.query(
+    `DO $$ BEGIN
+       IF to_regclass('public.videos') IS NOT NULL THEN
+         DELETE FROM "videos";
+       END IF;
+     END $$;`,
+  );
   await dataSource.query('DELETE FROM "refresh_tokens"');
   await dataSource.query('DELETE FROM "verification_tokens"');
   await dataSource.query('DELETE FROM "channels"');
