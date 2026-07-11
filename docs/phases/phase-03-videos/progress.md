@@ -11,7 +11,7 @@
 ### SI-03.2 — Video Entity and Migration
 - **Status:** completed
 - **Tests:** 9/9 passing (video.entity.integration-spec: 6, migrations.integration-spec: 2, videos.module.spec: 1)
-- **Observations:** migrations.integration-spec now drops enum types in beforeAll (DROP TYPE IF EXISTS) — DROP TABLE does not remove enums, which made the suite single-run-only on databases where migrations had already executed. size_bytes is bigint → string in TypeORM.
+- **Observations:** Relação Video→Channel é intencionalmente unidirecional: definir o inverso (Channel.videos) exigiria registrar Video em todos os módulos/datasources da fase 02 que conhecem Channel (cascata de metadata do TypeORM) — acoplamento retroativo pior que a exceção à regra. migrations.integration-spec now drops enum types in beforeAll (DROP TYPE IF EXISTS) — DROP TABLE does not remove enums, which made the suite single-run-only on databases where migrations had already executed. size_bytes is bigint → string in TypeORM.
 
 ### SI-03.3 — Storage Module (S3 Client, Presigning, Bucket Bootstrap)
 - **Status:** completed
