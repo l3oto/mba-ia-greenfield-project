@@ -1,7 +1,10 @@
 import { DataSource, Repository } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Channel } from '../../channels/entities/channel.entity';
-import { createTestDataSource } from '../../test/create-test-data-source';
+import {
+  cleanAllTables,
+  createTestDataSource,
+} from '../../test/create-test-data-source';
 import { Video, VideoStatus } from './video.entity';
 
 const ALL_ENTITIES = [User, Channel, Video];
@@ -32,9 +35,7 @@ describe('Video entity (integration)', () => {
   });
 
   beforeEach(async () => {
-    await dataSource.query('DELETE FROM "videos"');
-    await dataSource.query('DELETE FROM "channels"');
-    await dataSource.query('DELETE FROM "users"');
+    await cleanAllTables(dataSource);
 
     const userRepository = dataSource.getRepository(User);
     const channelRepository = dataSource.getRepository(Channel);

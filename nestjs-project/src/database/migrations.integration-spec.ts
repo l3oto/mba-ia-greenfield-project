@@ -39,17 +39,14 @@ describe('Database migrations (integration)', () => {
 
     await dataSource.initialize();
 
-    await Promise.all([
-      ...MANAGED_TABLES.map((table) =>
-        dataSource.query(`DROP TABLE IF EXISTS "${table}" CASCADE`),
-      ),
-      dataSource.query(`DROP TABLE IF EXISTS "migrations" CASCADE`),
-    ]);
-    await Promise.all(
-      MANAGED_TYPES.map((type) =>
-        dataSource.query(`DROP TYPE IF EXISTS "${type}" CASCADE`),
-      ),
-    );
+    // Sequential drops — concurrent DROP TABLE CASCADE over the FK graph
+    // (videos → channels → users) deadlocks in PostgreSQL.
+    for (const table of [...MANAGED_TABLES, 'migrations']) {
+      await dataSource.query(`DROP TABLE IF EXISTS "${table}" CASCADE`);
+    }
+    for (const type of MANAGED_TYPES) {
+      await dataSource.query(`DROP TYPE IF EXISTS "${type}" CASCADE`);
+    }
   });
 
   afterAll(async () => {

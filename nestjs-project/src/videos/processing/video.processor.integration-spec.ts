@@ -16,6 +16,7 @@ import databaseConfig from '../../config/database.config';
 import storageConfig from '../../config/storage.config';
 import { StorageModule } from '../../storage/storage.module';
 import { StorageService } from '../../storage/storage.service';
+import { cleanAllTables } from '../../test/create-test-data-source';
 import { Video, VideoStatus } from '../entities/video.entity';
 import type { ProcessVideoJobData } from '../videos.constants';
 import { FfmpegService } from './ffmpeg.service';
@@ -83,9 +84,7 @@ describe('VideoProcessor (integration)', () => {
   });
 
   beforeEach(async () => {
-    await dataSource.query('DELETE FROM "videos"');
-    await dataSource.query('DELETE FROM "channels"');
-    await dataSource.query('DELETE FROM "users"');
+    await cleanAllTables(dataSource);
   });
 
   async function seedProcessingVideo(): Promise<Video> {
